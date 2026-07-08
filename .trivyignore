@@ -1,0 +1,20 @@
+# Findings that are intentional for this playground, with justification.
+# Anything NOT listed here at HIGH/CRITICAL severity fails the CI scan.
+
+# The web server is deliberately public over HTTP — that is the point of the
+# playground stack. Do not carry this pattern into production without a load
+# balancer + TLS in front.
+AVD-AWS-0107
+
+# Unrestricted egress from the web server SG: acceptable for a short-lived
+# playground instance that needs to reach package mirrors on first boot.
+AVD-AWS-0104
+
+# The public subnet auto-assigns public IPs — required so the web server is
+# reachable without a NAT/ALB, which would triple the cost of the playground.
+AVD-AWS-0164
+
+# The state bucket is encrypted with the AWS-managed KMS key rather than a
+# customer-managed key. A CMK adds cost and key-policy management for no real
+# benefit in a throwaway playground account.
+AVD-AWS-0132

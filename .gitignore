@@ -1,0 +1,32 @@
+# Terraform
+**/.terraform/
+*.tfstate
+*.tfstate.*
+*.tfplan
+crash.log
+crash.*.log
+
+# Variable files may contain account-specific or sensitive values.
+# Commit only *.tfvars.example files.
+*.tfvars
+*.tfvars.json
+!*.tfvars.example
+
+# Terraform CLI config with credentials
+.terraformrc
+terraform.rc
+
+# Override files are typically used for local experiments
+override.tf
+override.tf.json
+*_override.tf
+*_override.tf.json
+
+# Claude Code local settings
+.claude/settings.local.json
+
+# Editor/OS noise
+.DS_Store
+.idea/
+*.swp
+*.swo
