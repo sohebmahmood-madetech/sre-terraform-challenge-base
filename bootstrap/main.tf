@@ -118,6 +118,10 @@ resource "aws_s3_bucket" "state" {
   bucket = "${var.project_name}-tfstate-${data.aws_caller_identity.current.account_id}"
 }
 
+resource "aws_s3_bucket" "state_logs" {
+  bucket = "${var.project_name}-tfstate-logs-${data.aws_caller_identity.current.account_id}"
+}
+
 resource "aws_s3_bucket_versioning" "state" {
   bucket = aws_s3_bucket.state.id
 
@@ -144,4 +148,44 @@ resource "aws_s3_bucket_public_access_block" "state" {
   block_public_policy     = true
   ignore_public_acls      = true
   restrict_public_buckets = true
+}
+
+resource "aws_s3_bucket_versioning" "state_logs" {
+  bucket = aws_s3_bucket.state_logs.id
+
+  versioning_configuration {
+    status = "Enabled"
+  }
+}
+
+resource "aws_s3_bucket_server_side_encryption_configuration" "state_logs" {
+  bucket = aws_s3_bucket.state_logs.id
+
+  rule {
+    apply_server_side_encryption_by_default {
+      sse_algorithm = "aws:kms"
+    }
+    bucket_key_enabled = true
+  }
+}
+
+resource "aws_s3_bucket_public_access_block" "state_logs" {
+  bucket = aws_s3_bucket.state_logs.id
+
+  block_public_acls       = true
+  block_public_policy     = true
+  ignore_public_acls      = true
+  restrict_public_buckets = true
+}
+
+resource "aws_s3_bucket_logging" "state" {
+  bucket        = aws_s3_bucket.state.id
+  target_bucket = aws_s3_bucket.state_logs.id
+  target_prefix = "logs/"
+}
+
+resource "aws_s3_bucket_logging" "state_logs" {
+  bucket        = aws_s3_bucket.state_logs.id
+  target_bucket = aws_s3_bucket.state_logs.id
+  target_prefix = "access-logs/"
 }

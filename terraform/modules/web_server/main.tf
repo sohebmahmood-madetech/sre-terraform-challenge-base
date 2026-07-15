@@ -14,6 +14,63 @@ resource "aws_security_group" "web" {
   }
 }
 
+resource "aws_iam_role" "assets_read" {
+  name = "sre-challenge-${var.name}-assets-read"
+
+  assume_role_policy = jsonencode({
+    Version = "2012-10-17"
+    Statement = [
+      {
+        Effect = "Allow"
+        Principal = {
+          Service = "ec2.amazonaws.com"
+        }
+        Action = "sts:AssumeRole"
+      }
+    ]
+  })
+
+  tags = {
+    Name = "sre-challenge-${var.name}-assets-read"
+  }
+}
+
+resource "aws_iam_policy" "assets_read" {
+  name = "sre-challenge-${var.name}-assets-read"
+
+  policy = jsonencode({
+    Version = "2012-10-17"
+    Statement = [
+      {
+        Sid    = "ListBucket"
+        Effect = "Allow"
+        Action = ["s3:ListBucket"]
+        Resource = [
+          var.assets_bucket_arn
+        ]
+      },
+      {
+        Sid    = "GetObject"
+        Effect = "Allow"
+        Action = ["s3:GetObject"]
+        Resource = [
+          "${var.assets_bucket_arn}/*"
+        ]
+      }
+    ]
+  })
+}
+
+resource "aws_iam_role_policy_attachment" "assets_read" {
+  role       = aws_iam_role.assets_read.name
+  policy_arn = aws_iam_policy.assets_read.arn
+}
+
+resource "aws_iam_instance_profile" "assets_read" {
+  name = "sre-challenge-${var.name}-assets-read"
+  role = aws_iam_role.assets_read.name
+}
+
 resource "aws_vpc_security_group_ingress_rule" "http" {
   for_each = toset(var.allowed_http_cidrs)
 
@@ -37,9 +94,11 @@ resource "aws_instance" "web" {
   instance_type          = var.instance_type
   subnet_id              = var.subnet_id
   vpc_security_group_ids = [aws_security_group.web.id]
+  iam_instance_profile   = aws_iam_instance_profile.assets_read.name
 
   user_data = templatefile("${path.module}/user_data.sh.tpl", {
     environment = var.environment
+    web_message = var.web_message
   })
   user_data_replace_on_change = true
 

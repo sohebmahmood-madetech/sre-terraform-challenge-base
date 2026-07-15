@@ -28,3 +28,13 @@ variable "environment" {
   description = "Environment name shown on the landing page."
   type        = string
 }
+
+variable "web_message" {
+  description = "Message displayed on the landing page."
+  type        = string
+}
+
+variable "assets_bucket_arn" {
+  description = "ARN of the assets bucket the web server can read from."
+  type        = string
+}

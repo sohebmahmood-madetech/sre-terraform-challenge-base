@@ -48,3 +48,61 @@ resource "aws_route_table_association" "public" {
   subnet_id      = aws_subnet.public.id
   route_table_id = aws_route_table.public.id
 }
+
+resource "aws_kms_key" "vpc_flow_logs" {
+  description             = "KMS key for VPC flow logs"
+  deletion_window_in_days = 7
+  enable_key_rotation     = true
+}
+
+resource "aws_cloudwatch_log_group" "vpc_flow" {
+  name              = "/aws/vpc-flow-logs/${var.project_name}"
+  retention_in_days = 14
+  kms_key_id        = aws_kms_key.vpc_flow_logs.arn
+}
+
+resource "aws_flow_log" "vpc" {
+  iam_role_arn    = aws_iam_role.vpc_flow.arn
+  log_destination = aws_cloudwatch_log_group.vpc_flow.arn
+  traffic_type    = "ALL"
+  vpc_id          = aws_vpc.main.id
+}
+
+resource "aws_iam_role" "vpc_flow" {
+  name = "${var.project_name}-vpc-flow-logs"
+
+  assume_role_policy = jsonencode({
+    Version = "2012-10-17"
+    Statement = [
+      {
+        Effect = "Allow"
+        Principal = {
+          Service = "vpc-flow-logs.amazonaws.com"
+        }
+        Action = "sts:AssumeRole"
+      }
+    ]
+  })
+}
+
+resource "aws_iam_role_policy" "vpc_flow" {
+  name = "${var.project_name}-vpc-flow-logs"
+  role = aws_iam_role.vpc_flow.id
+
+  policy = jsonencode({
+    Version = "2012-10-17"
+    Statement = [
+      {
+        Effect = "Allow"
+        Action = [
+          "logs:CreateLogGroup",
+          "logs:CreateLogStream",
+          "logs:PutLogEvents",
+          "logs:DescribeLogGroups",
+          "logs:DescribeLogStreams"
+        ]
+        Resource = "*"
+      }
+    ]
+  })
+}
