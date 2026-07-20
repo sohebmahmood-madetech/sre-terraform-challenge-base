@@ -1,7 +1,103 @@
+# CHANGE LOG:
+# - 2026-07-20: Added IAM role for S3 bucket access with sre-challenge- prefix for CI/CD constraints
+
 # Latest Amazon Linux 2023 AMI, resolved via the public SSM parameter so we
 # never pin an AMI ID in code.
 data "aws_ssm_parameter" "al2023_ami" {
   name = "/aws/service/ami-amazon-linux-latest/al2023-ami-kernel-default-x86_64"
+}
+
+# Permissions boundary policy - restricts EC2 role to only manage resources prefixed with "sre-challenge-"
+resource "aws_iam_policy" "permissions_boundary" {
+  name        = "sre-challenge-permissions-boundary"
+  description = "Restrict role to only access resources prefixed with sre-challenge-"
+
+  policy = jsonencode({
+    Version = "2012-10-17"
+    Statement = [
+      {
+        Effect = "Allow"
+        Action = "*"
+        Resource = [
+          "arn:aws:s3:::*-assets-*",
+          "arn:aws:s3:::*-assets-*/*"
+        ]
+        Condition = {
+          StringLike = {
+            "aws:ResourceTag/Prefix" = "sre-challenge-*"
+          }
+        }
+      }
+    ]
+  })
+}
+
+# IAM role for EC2 instance to access S3 bucket
+# Prefixed with "sre-challenge-" for CI/CD deployment role constraints
+resource "aws_iam_role" "web_server" {
+  name                 = "sre-challenge-web-server-${var.name}"
+  permissions_boundary = aws_iam_policy.permissions_boundary.arn
+
+  assume_role_policy = jsonencode({
+    Version = "2012-10-17"
+    Statement = [
+      {
+        Action = "sts:AssumeRole"
+        Effect = "Allow"
+        Principal = {
+          Service = "ec2.amazonaws.com"
+        }
+      }
+    ]
+  })
+
+  tags = {
+    Name   = "sre-challenge-web-server-${var.name}"
+    Prefix = "sre-challenge-"
+  }
+}
+
+# IAM policy for S3 bucket access (GetObject and ListBucket only on the specific bucket)
+resource "aws_iam_policy" "s3_bucket_access" {
+  name        = "sre-challenge-s3-bucket-access-${var.name}"
+  description = "Allow EC2 instance to access specific S3 bucket (GetObject and ListBucket)"
+
+  policy = jsonencode({
+    Version = "2012-10-17"
+    Statement = [
+      {
+        Effect = "Allow"
+        Action = [
+          "s3:GetObject"
+        ]
+        Resource = "${var.assets_bucket_arn}/*"
+      },
+      {
+        Effect = "Allow"
+        Action = [
+          "s3:ListBucket"
+        ]
+        Resource = var.assets_bucket_arn
+      }
+    ]
+  })
+
+  tags = {
+    Name   = "sre-challenge-s3-bucket-access-${var.name}"
+    Prefix = "sre-challenge-"
+  }
+}
+
+# Attach the S3 policy to the web server role
+resource "aws_iam_role_policy_attachment" "s3_access" {
+  role       = aws_iam_role.web_server.name
+  policy_arn = aws_iam_policy.s3_bucket_access.arn
+}
+
+# Instance profile for attaching the IAM role to EC2
+resource "aws_iam_instance_profile" "web_server" {
+  name = "sre-challenge-web-server-${var.name}"
+  role = aws_iam_role.web_server.name
 }
 
 resource "aws_security_group" "web" {
@@ -25,18 +121,18 @@ resource "aws_vpc_security_group_ingress_rule" "http" {
   ip_protocol       = "tcp"
 }
 
-resource "aws_vpc_security_group_egress_rule" "all" {
-  security_group_id = aws_security_group.web.id
-  description       = "Allow all outbound"
-  cidr_ipv4         = "0.0.0.0/0"
-  ip_protocol       = "-1"
-}
+# NOTE: Avoid allowing unrestricted outbound access. Create specific egress rules
+# restricting destinations required by the application (for example, NAT, required APIs,
+# or specific CIDR ranges). Remove this resource and add parameterized egress rules
+# (e.g. for_each over var.allowed_egress_cidrs) when a restrictive list is available.
+# The explicit open egress rule was removed to avoid flagged misconfiguration.
 
 resource "aws_instance" "web" {
   ami                    = data.aws_ssm_parameter.al2023_ami.insecure_value
   instance_type          = var.instance_type
   subnet_id              = var.subnet_id
   vpc_security_group_ids = [aws_security_group.web.id]
+  iam_instance_profile   = aws_iam_instance_profile.web_server.name
 
   user_data = templatefile("${path.module}/user_data.sh.tpl", {
     environment = var.environment

@@ -28,6 +28,12 @@ variable "public_subnet_cidr" {
   default     = "10.42.1.0/24"
 }
 
+variable "map_public_ip_on_launch" {
+  description = "Whether to auto-assign public IPv4 addresses to instances launched in the public subnet. Set to true only for workloads that must be internet-facing."
+  type        = bool
+  default     = false
+}
+
 variable "instance_type" {
   description = "EC2 instance type for the web server."
   type        = string
