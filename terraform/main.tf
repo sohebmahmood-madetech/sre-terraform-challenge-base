@@ -7,4 +7,5 @@ module "web_server" {
   instance_type      = var.instance_type
   allowed_http_cidrs = var.allowed_http_cidrs
   environment        = var.environment
+  web_message        = var.web_message
 }
