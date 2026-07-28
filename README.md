@@ -9,6 +9,7 @@ validation and an OIDC-authenticated deploy pipeline.
 **The exercises live in [TASKS.md](TASKS.md).**
 
 ## What it deploys
+No Op Change
 
 ```
 VPC (10.42.0.0/16)
