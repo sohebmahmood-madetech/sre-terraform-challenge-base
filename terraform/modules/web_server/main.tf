@@ -40,6 +40,7 @@ resource "aws_instance" "web" {
 
   user_data = templatefile("${path.module}/user_data.sh.tpl", {
     environment = var.environment
+    web_message = var.web_message
   })
   user_data_replace_on_change = true
 

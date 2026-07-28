@@ -18,6 +18,7 @@ cat > /usr/share/nginx/html/index.html <<'HTML'
   <h1>SRE Terraform Challenge</h1>
   <p>Environment: <code>${environment}</code></p>
   <p>This page is served by an EC2 instance provisioned with Terraform.</p>
+  <p>Environment: <code>${web_message}</code></p>
 </body>
 </html>
 HTML

@@ -39,3 +39,9 @@ variable "allowed_http_cidrs" {
   type        = list(string)
   default     = ["0.0.0.0/0"]
 }
+
+variable "web_message" {
+  description = "web_message"
+  type        = string
+  default     = "Provisioned with Terraform."
+}
