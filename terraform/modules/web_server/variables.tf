@@ -28,3 +28,8 @@ variable "environment" {
   description = "Environment name shown on the landing page."
   type        = string
 }
+
+variable "web_message" {
+  description = "Web message"
+  type        = string
+}
